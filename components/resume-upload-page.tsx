@@ -87,11 +87,6 @@ const ResumeUploadPage = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <header className="bg-gradient-to-r from-blue-200 to-blue-400 p-4 text-center">
-        <h1 className="text-3xl font-bold text-white">ColdConnect</h1>
-        <h3 className="text-xl  text-white">Easy Cold Email</h3>
-      </header>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Resume Upload Card */}
         <Card>

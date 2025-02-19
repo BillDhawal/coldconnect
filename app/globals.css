@@ -39,6 +39,11 @@
   }
 }
 
+.cl-userButtonOuterIdentifier {
+  font-size: 15px;
+  color: white;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
