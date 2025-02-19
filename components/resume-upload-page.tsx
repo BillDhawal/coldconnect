@@ -6,7 +6,6 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import axios from "axios";
 import { extractTextFromPDF, askGPTForResumeMatch } from "../utils/resumeUtils";
 import { askGPTForColdEmail } from "../utils/coldEmailUtils";
 import { getCompanyData } from "../utils/getEmailLeads";
