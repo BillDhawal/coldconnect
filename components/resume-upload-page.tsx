@@ -80,13 +80,15 @@ const ResumeUploadPage = () => {
   };
 
   const handleExtract = async (text: string, jobDescription: string) => {
-    // console.log("handleExtract called with:", { text, jobDescription });
+    console.log("handleExtract called with:", { text, jobDescription });
     const data: ExtractedData = await askGPTForResumeMatch(
       text,
       jobDescription
     );
+    console.log("Extracted Data askGPTForResumeMatch:", data);
     setParsedData(data);
     const leads: Leads = await getCompanyData(data.potential_domain);
+    console.log("Leads:", leads);
     setLeads(leads);
   };
 
@@ -94,11 +96,12 @@ const ResumeUploadPage = () => {
     text: string,
     jobDescription: string
   ) => {
-    // console.log("handleColdEmailGeneration called with:", {
-    //   text,
-    //   jobDescription,
-    // });
+    console.log("handleColdEmailGeneration called with:", {
+      text,
+      jobDescription,
+    });
     const data: GeneratedEmail = await askGPTForColdEmail(text, jobDescription);
+    console.log("Generated Email:", data);
     setGeneratedEmail(data);
   };
 
