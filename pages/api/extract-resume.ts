@@ -1,6 +1,7 @@
+import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 
-export default async function handler(req, res) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const openai = new OpenAI({
     apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY, // Safe, because it's only accessible on the server
   });
