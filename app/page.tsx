@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import ResumeUploadPage from "@/components/resume-upload-page";
 import NavigationBar from "@/components/NavigationBar";
 
