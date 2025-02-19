@@ -3,18 +3,30 @@
 import React, { useState } from "react";
 import { getCompanyData } from "../utils/getEmailLeads";
 
+interface Lead {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+interface CompanyData {
+  companyName: string;
+  location: string;
+  emails: Lead[];
+}
+
 const TestForm = () => {
   const [domain, setDomain] = useState("");
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<CompanyData | null>(null);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setResult(null);
 
     try {
-      const data = await getCompanyData(domain);
+      const data: CompanyData = await getCompanyData(domain);
       setResult(data);
     } catch (err) {
       setError("Failed to fetch company data. Please try again.");

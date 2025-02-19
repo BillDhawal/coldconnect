@@ -10,16 +10,53 @@ import { extractTextFromPDF, askGPTForResumeMatch } from "../utils/resumeUtils";
 import { askGPTForColdEmail } from "../utils/coldEmailUtils";
 import { getCompanyData } from "../utils/getEmailLeads";
 
+interface ExtractedData {
+  company: string;
+  potential_domain: string;
+  match_score: number;
+  matching_skills: string[];
+  missing_skills: string[];
+  feedback: string;
+}
+
+interface Lead {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+interface Leads {
+  companyName: string;
+  location: string;
+  emails: Lead[];
+}
+
+interface GeneratedEmail {
+  subject: string;
+  body: string;
+}
+
 const ResumeUploadPage = () => {
   const [jobDescription, setJobDescription] = useState("");
-  const [generatedEmail, setGeneratedEmail] = useState("");
+  const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [resumeText, setResumeText] = useState("");
-  const [parsedData, setParsedData] = useState(null);
-  const [leads, setLeads] = useState(null);
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
+  const [parsedData, setParsedData] = useState<ExtractedData | null>(null);
+  const [leads, setLeads] = useState<Leads | null>(null);
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = event.target.files;
+    if (!files) {
+      setError("No file selected");
+      return;
+    }
+
+    const file = files[0];
     if (
       file &&
       (file.type === "application/pdf" || file.type === "application/msword")
@@ -42,24 +79,30 @@ const ResumeUploadPage = () => {
     }
   };
 
-  const handleExtract = async (text, jobDescription) => {
-    console.log("handleExtract called with:", { text, jobDescription });
-    const data = await askGPTForResumeMatch(text, jobDescription);
+  const handleExtract = async (text: string, jobDescription: string) => {
+    // console.log("handleExtract called with:", { text, jobDescription });
+    const data: ExtractedData = await askGPTForResumeMatch(
+      text,
+      jobDescription
+    );
     setParsedData(data);
-    const leads = await getCompanyData(data.potential_domain);
+    const leads: Leads = await getCompanyData(data.potential_domain);
     setLeads(leads);
   };
 
-  const handleColdEmailGeneration = async (text, jobDescription) => {
-    console.log("handleColdEmailGeneration called with:", {
-      text,
-      jobDescription,
-    });
-    const data = await askGPTForColdEmail(text, jobDescription);
+  const handleColdEmailGeneration = async (
+    text: string,
+    jobDescription: string
+  ) => {
+    // console.log("handleColdEmailGeneration called with:", {
+    //   text,
+    //   jobDescription,
+    // });
+    const data: GeneratedEmail = await askGPTForColdEmail(text, jobDescription);
     setGeneratedEmail(data);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
@@ -67,14 +110,16 @@ const ResumeUploadPage = () => {
       await handleExtract(resumeText, jobDescription);
 
       await handleColdEmailGeneration(resumeText, jobDescription);
-    } catch (err) {
-      setError("Failed to generate email. Please try again.", err);
+    } catch {
+      setError("Failed to generate email. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const openGmail = () => {
+    if (!leads || !generatedEmail) return;
+
     const to = leads.emails.map((email) => email.email).join(",");
     const subject = encodeURIComponent(generatedEmail.subject);
     const body = encodeURIComponent(generatedEmail.body);

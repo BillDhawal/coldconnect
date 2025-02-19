@@ -5,7 +5,6 @@ dotenv.config();
 
 const HunterAPIKey = process.env.NEXT_PUBLIC_HUNTER_API_KEY;
 export const getEmailLeads = async (domain: string): Promise<any> => {
-    console.info("process.env.NEXT_PUBLIC_HUNTER_API_KEY", HunterAPIKey);
   const config = {
     method: 'get',
     maxBodyLength: Infinity,

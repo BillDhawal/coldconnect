@@ -1,10 +1,11 @@
+import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 
-export default async function handler(req, res) {
-    const openai = new OpenAI({
-        apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY, // Safe, because it's only accessible on the server
-    });
-  console.info("Cold Email  API hit");
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const openai = new OpenAI({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY, // Safe, because it's only accessible on the server
+  });
+  console.info("Cold Email API hit");
 
   if (req.method !== "POST") {
     console.error("Method Not Allowed");
