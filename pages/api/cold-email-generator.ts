@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     Generate a concise and professional cold email for the following job application. The email should be **highly personalized**, leveraging the most relevant skills and projects from the provided resume that align with the job description. **Avoid generic or templated responses.** Instead, craft a unique and engaging email that demonstrates genuine interest in the role.  
 
     ### **Guidelines:**   
-    - Address the hiring manager or recruiter appropriately.  
+    - Address the hiring manager or recruiter appropriately (Add company name only if able to find).  
     - Start with a compelling introduction mentioning the job title and company name.  
     - **Highlight 2-3 key skills or projects that directly match the job description.**  
     - If the resume does not explicitly mention a skill, **do not fabricate it**—instead, generalize similar relevant experience.  
@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     - **Use double quotes for JSON keys and values.**  
     - **Escape all newline characters inside JSON strings.**  
     - **Do not mention skills that are not in the resume. Instead, generalize related expertise if necessary.**  
-
+    - **Do not add any Name of the Company if you were not able to find it in the Job Description, keep it generic.**
     `;
 
     console.debug("Prompt sent to OpenAI:", prompt);
