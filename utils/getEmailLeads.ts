@@ -21,7 +21,12 @@ export async function getCompanyData(domain: string): Promise<Leads> {
   try {
     // Validate domain
     if (!domain) {
-      throw new Error("Domain is required");
+      console.warn("No domain provided for email lead generation");
+      return {
+        companyName: "Unknown Company",
+        location: "Unknown",
+        emails: [],
+      };
     }
 
     // Clean up the domain
@@ -32,6 +37,8 @@ export async function getCompanyData(domain: string): Promise<Leads> {
 
     // Remove any path or query parameters
     domain = domain.split("/")[0];
+
+    console.log(`Searching for email leads for domain: ${domain}`);
 
     // Make a request to our API endpoint
     const response = await axios.post("/api/hunter-search", { domain });
@@ -44,12 +51,12 @@ export async function getCompanyData(domain: string): Promise<Leads> {
   } catch (error: any) {
     console.error("Error in getCompanyData:", error);
 
-    // Handle API response errors
-    if (error.response?.data?.error) {
-      throw new Error(error.response.data.error);
-    }
-
-    // Fallback to a generic error
-    throw new Error(error.message || "Failed to fetch email leads");
+    // Instead of throwing an error, return a default object
+    // This prevents the application from crashing when Hunter API fails
+    return {
+      companyName: domain || "Unknown Company",
+      location: "Unknown",
+      emails: [],
+    };
   }
 }
