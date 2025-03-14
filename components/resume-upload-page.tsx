@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { Upload, FileText, Linkedin, Briefcase } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Linkedin,
+  Briefcase,
+  Link as LinkIcon,
+  AlertCircle,
+  Info,
+  Copy,
+  CheckCircle,
+  RefreshCcw,
+} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,15 +48,22 @@ interface GeneratedEmail {
 }
 
 const ResumeUploadPage = () => {
+  const [jobUrl, setJobUrl] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [extractingJob, setExtractingJob] = useState(false);
+  const [jobExtracted, setJobExtracted] = useState(false);
   const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [resumeText, setResumeText] = useState("");
   const [parsedData, setParsedData] = useState<ExtractedData | null>(null);
   const [leads, setLeads] = useState<Leads | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -62,17 +80,17 @@ const ResumeUploadPage = () => {
       (file.type === "application/pdf" || file.type === "application/msword")
     ) {
       try {
+        setUploadingResume(true);
         const arrayBuffer = await file.arrayBuffer();
         const text = await extractTextFromPDF(arrayBuffer);
         setResumeText(text);
         setError("");
-        console.log(
-          " Handle File Change Called, Extracting resume text, sending to handleExtract"
-        );
-        //await handleExtract(text, jobDescription); // Trigger handleExtract after extracting text
+        setSuccess("Resume uploaded successfully!");
       } catch (error) {
         console.error("Error processing file:", error);
         setError("Failed to process resume. Please try again.");
+      } finally {
+        setUploadingResume(false);
       }
     } else {
       setError("Please upload a PDF or DOC file");
@@ -132,6 +150,34 @@ const ResumeUploadPage = () => {
     window.open(gmailURL, "_blank");
   };
 
+  const handleCopyEmail = async () => {
+    if (!generatedEmail) return;
+
+    try {
+      await navigator.clipboard.writeText(
+        `Subject: ${generatedEmail.subject}\n\n${generatedEmail.body}`
+      );
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy email:", err);
+    }
+  };
+
+  const handleReset = () => {
+    setJobUrl("");
+    setJobDescription("");
+    setJobExtracted(false);
+    setGeneratedEmail(null);
+    setError("");
+    setSuccess("");
+    setResumeText("");
+    setParsedData(null);
+    setLeads(null);
+    setShowManualInput(false);
+    setEmailCopied(false);
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -151,22 +197,32 @@ const ResumeUploadPage = () => {
                 onChange={handleFileChange}
                 className="hidden"
                 id="resume-upload"
+                disabled={uploadingResume}
               />
               <label
                 htmlFor="resume-upload"
                 className="cursor-pointer flex flex-col items-center"
               >
-                <Upload className="h-12 w-12 text-gray-400 mb-2" />
+                <Upload
+                  className={`h-12 w-12 mb-2 ${
+                    uploadingResume
+                      ? "text-blue-400 animate-pulse"
+                      : "text-gray-400"
+                  }`}
+                />
                 <span className="text-sm text-gray-600">
-                  Drop your resume here or click to browse
+                  {uploadingResume
+                    ? "Processing resume..."
+                    : "Drop your resume here or click to browse"}
                 </span>
                 <span className="text-xs text-gray-500 mt-1">
                   Supports PDF, DOC formats
                 </span>
               </label>
-              {resumeText && (
-                <div className="mt-4 text-sm text-green-600">
-                  Resume Analysing
+              {resumeText && !uploadingResume && (
+                <div className="mt-4 text-sm text-green-600 flex items-center justify-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Resume uploaded successfully
                 </div>
               )}
             </div>
@@ -260,8 +316,30 @@ const ResumeUploadPage = () => {
               </div>
               <div>
                 <h3 className="font-bold mb-2">Match Score</h3>
-                <div className="text-lg font-bold text-green-600">
-                  {parsedData.match_score}
+                <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${
+                      parsedData.match_score >= 75
+                        ? "bg-green-500"
+                        : parsedData.match_score >= 50
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
+                    }`}
+                    style={{ width: `${parsedData.match_score}%` }}
+                  />
+                </div>
+                <div className="text-right mt-1">
+                  <span
+                    className={`text-sm font-medium ${
+                      parsedData.match_score >= 75
+                        ? "text-green-600"
+                        : parsedData.match_score >= 50
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {parsedData.match_score}%
+                  </span>
                 </div>
               </div>
               <div>
@@ -341,9 +419,21 @@ const ResumeUploadPage = () => {
       {generatedEmail && (
         <Card className="mt-6 bg-gray-800 text-white">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Generated Cold Email
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Generated Cold Email
+              </div>
+              <Button
+                onClick={handleCopyEmail}
+                className="text-white hover:text-gray-300 p-2"
+              >
+                {emailCopied ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -372,6 +462,26 @@ const ResumeUploadPage = () => {
         >
           Send Email
         </Button>
+      )}
+
+      {/* Reset Button */}
+      {(parsedData || generatedEmail) && (
+        <Button
+          type="button"
+          onClick={handleReset}
+          className="mt-4 flex items-center gap-2 bg-gray-200 text-gray-800 hover:bg-gray-300"
+        >
+          <RefreshCcw className="h-4 w-4" />
+          Start Over
+        </Button>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <span className="text-green-800">{success}</span>
+        </Alert>
       )}
     </div>
   );

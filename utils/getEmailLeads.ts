@@ -1,57 +1,55 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
+import axios from "axios";
 
-dotenv.config();
+interface Lead {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
 
-const HunterAPIKey = process.env.NEXT_PUBLIC_HUNTER_API_KEY;
-export const getEmailLeads = async (domain: string): Promise<any> => {
-  const config = {
-    method: 'get',
-    maxBodyLength: Infinity,
-    url: `https://api.hunter.io/v2/domain-search?api_key=${HunterAPIKey}&domain=${domain}`,
-    headers: {}
-  };
+interface Leads {
+  companyName: string;
+  location: string;
+  emails: Lead[];
+}
 
+/**
+ * Gets email leads for a company domain using Hunter.io
+ * @param domain The company domain to search for
+ * @returns An object containing company information and email leads
+ */
+export async function getCompanyData(domain: string): Promise<Leads> {
   try {
-    const response = await axios.request(config);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching email leads:', error);
-    throw error;
-  }
-};
+    // Validate domain
+    if (!domain) {
+      throw new Error("Domain is required");
+    }
 
-interface EmailInfo {
-    email: string;
-    firstName: string;
-    lastName: string;
-}
+    // Clean up the domain
+    domain = domain.trim().toLowerCase();
 
-interface ExtractedData {
-    companyName: string;
-    location: string;
-    emails: EmailInfo[];
-}
+    // Remove http/https and www if present
+    domain = domain.replace(/^(https?:\/\/)?(www\.)?/i, "");
 
-function extractCompanyData(json: any): ExtractedData {
-    const companyName = json.data.organization;
-    const location = `${json.data.city}, ${json.data.state}, ${json.data.country}`;
-    
-    const emails = json.data.emails.map((email: any) => ({
-        email: email.value,
-        firstName: email.first_name,
-        lastName: email.last_name
-    }));
-    
+    // Remove any path or query parameters
+    domain = domain.split("/")[0];
+
+    // Make a request to our API endpoint
+    const response = await axios.post("/api/hunter-search", { domain });
+
     return {
-        companyName,
-        location,
-        emails
+      companyName: response.data.companyName || domain,
+      location: response.data.location || "Unknown",
+      emails: response.data.emails || [],
     };
+  } catch (error: any) {
+    console.error("Error in getCompanyData:", error);
+
+    // Handle API response errors
+    if (error.response?.data?.error) {
+      throw new Error(error.response.data.error);
+    }
+
+    // Fallback to a generic error
+    throw new Error(error.message || "Failed to fetch email leads");
+  }
 }
-
-export const getCompanyData = async (domain: string): Promise<ExtractedData> => {
-    const emailLeads = await getEmailLeads(domain);
-    return extractCompanyData(emailLeads);
-};
-
