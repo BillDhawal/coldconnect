@@ -100,15 +100,44 @@ const ResumeUploadPage = () => {
 
   const handleExtract = async (text: string, jobDescription: string) => {
     console.log("handleExtract called with:", { text, jobDescription });
-    const data: ExtractedData = await askGPTForResumeMatch(
-      text,
-      jobDescription
-    );
-    console.log("Extracted Data askGPTForResumeMatch:", data);
-    setParsedData(data);
-    const leads: Leads = await getCompanyData(data.potential_domain);
-    console.log("Leads:", leads);
-    setLeads(leads);
+    try {
+      const data: ExtractedData = await askGPTForResumeMatch(
+        text,
+        jobDescription
+      );
+      console.log("Extracted Data askGPTForResumeMatch:", data);
+      setParsedData(data);
+
+      try {
+        const leads: Leads = await getCompanyData(data.potential_domain);
+        console.log("Leads:", leads);
+        setLeads(leads);
+
+        if (leads.emails.length === 0) {
+          console.warn(
+            "No email leads found for domain:",
+            data.potential_domain
+          );
+          setError(
+            (prev) =>
+              prev +
+              " No email leads found for the company domain. You can still generate a cold email template."
+          );
+        }
+      } catch (leadsError) {
+        console.error("Error fetching email leads:", leadsError);
+        // Set leads with empty data but don't block the flow
+        setLeads({
+          companyName: data.company || "Unknown Company",
+          location: "Unknown",
+          emails: [],
+        });
+      }
+    } catch (error: any) {
+      console.error("Error in handleExtract:", error);
+      setError("Failed to analyze resume match. Please try again.");
+      throw error; // Re-throw to be handled by the caller
+    }
   };
 
   const handleColdEmailGeneration = async (
@@ -188,20 +217,44 @@ const ResumeUploadPage = () => {
     setExtractingJob(true);
     setError("");
     setShowManualInput(false);
+    setSuccess("");
 
     try {
+      console.log(`Attempting to extract job from URL: ${jobUrl}`);
       const jobData = await extractJobFromUrl(jobUrl);
+
+      if (
+        !jobData.jobDescription ||
+        jobData.jobDescription.trim().length < 50
+      ) {
+        throw new Error(
+          "The extracted job description is too short or empty. Please try a different URL or enter the description manually."
+        );
+      }
+
       setJobDescription(jobData.jobDescription);
       setJobExtracted(true);
-      console.log("Extracted job description:", jobData.jobDescription);
+      setSuccess(
+        `Successfully extracted job description from ${
+          jobData.companyName || "the provided URL"
+        }`
+      );
+      console.log(
+        "Extracted job description:",
+        jobData.jobDescription.substring(0, 100) + "..."
+      );
       console.log("Company name:", jobData.companyName);
     } catch (error: any) {
       console.error("Error extracting job description:", error);
-      setError(
+
+      // Set a user-friendly error message
+      const errorMessage =
         error.message ||
-          "Failed to extract job description. Please try a different URL or paste the description manually."
-      );
+        "Failed to extract job description. Please try a different URL or paste the description manually.";
+
+      setError(errorMessage);
       setShowManualInput(true);
+      setJobExtracted(false);
     } finally {
       setExtractingJob(false);
     }
@@ -278,6 +331,7 @@ const ResumeUploadPage = () => {
                   value={jobUrl}
                   onChange={(e) => setJobUrl(e.target.value)}
                   className="flex-1"
+                  disabled={extractingJob}
                 />
                 <Button
                   type="button"
@@ -285,7 +339,31 @@ const ResumeUploadPage = () => {
                   disabled={extractingJob || !jobUrl}
                   className="whitespace-nowrap"
                 >
-                  {extractingJob ? "Extracting..." : "Extract Job"}
+                  {extractingJob ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4 mr-2 text-white"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Extracting...
+                    </>
+                  ) : (
+                    "Extract Job"
+                  )}
                 </Button>
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -303,7 +381,8 @@ const ResumeUploadPage = () => {
                   {jobDescription.substring(0, 300)}
                   {jobDescription.length > 300 && "..."}
                 </div>
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-green-600 mt-1 flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
                   Job description extracted successfully!
                 </p>
               </div>
@@ -316,7 +395,7 @@ const ResumeUploadPage = () => {
                 <div>
                   <div className="font-medium">Extraction Failed</div>
                   <div className="text-sm text-red-800">{error}</div>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Button
                       type="button"
                       onClick={() => setShowManualInput(true)}
@@ -509,30 +588,54 @@ const ResumeUploadPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <table className="min-w-full bg-white">
-              <thead>
-                <tr>
-                  <th className="py-2 px-4 border-b">Company Name</th>
-                  <th className="py-2 px-4 border-b">Location</th>
-                  <th className="py-2 px-4 border-b">Emails</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="py-2 px-4 border-b">{leads.companyName}</td>
-                  <td className="py-2 px-4 border-b">{leads.location}</td>
-                  <td className="py-2 px-4 border-b">
-                    <ul>
-                      {leads.emails.map((email, index) => (
-                        <li key={index}>
-                          {email.firstName} {email.lastName} - {email.email}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            {leads.emails.length > 0 ? (
+              <table className="min-w-full bg-white">
+                <thead>
+                  <tr>
+                    <th className="py-2 px-4 border-b text-gray-800">
+                      Company Name
+                    </th>
+                    <th className="py-2 px-4 border-b text-gray-800">
+                      Location
+                    </th>
+                    <th className="py-2 px-4 border-b text-gray-800">Emails</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="py-2 px-4 border-b text-gray-800">
+                      {leads.companyName}
+                    </td>
+                    <td className="py-2 px-4 border-b text-gray-800">
+                      {leads.location}
+                    </td>
+                    <td className="py-2 px-4 border-b text-gray-800">
+                      <ul>
+                        {leads.emails.map((email, index) => (
+                          <li key={index} className="text-gray-800">
+                            {email.firstName} {email.lastName} - {email.email}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <Alert className="bg-amber-50 border-amber-200">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <div className="ml-2 text-amber-800">
+                  <p>
+                    No email leads found for{" "}
+                    {leads.companyName || "this company"}.
+                  </p>
+                  <p className="text-sm mt-1">
+                    You can still generate a cold email template and manually
+                    find contact information.
+                  </p>
+                </div>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       )}
