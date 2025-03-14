@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { extractTextFromPDF, askGPTForResumeMatch } from "../utils/resumeUtils";
 import { askGPTForColdEmail } from "../utils/coldEmailUtils";
 import { getCompanyData } from "../utils/getEmailLeads";
+import { extractJobFromUrl } from "../utils/jobUtils";
 
 interface ExtractedData {
   company: string;
@@ -178,6 +179,34 @@ const ResumeUploadPage = () => {
     setEmailCopied(false);
   };
 
+  const handleExtractJobFromUrl = async () => {
+    if (!jobUrl) {
+      setError("Please enter a job URL");
+      return;
+    }
+
+    setExtractingJob(true);
+    setError("");
+    setShowManualInput(false);
+
+    try {
+      const jobData = await extractJobFromUrl(jobUrl);
+      setJobDescription(jobData.jobDescription);
+      setJobExtracted(true);
+      console.log("Extracted job description:", jobData.jobDescription);
+      console.log("Company name:", jobData.companyName);
+    } catch (error: any) {
+      console.error("Error extracting job description:", error);
+      setError(
+        error.message ||
+          "Failed to extract job description. Please try a different URL or paste the description manually."
+      );
+      setShowManualInput(true);
+    } finally {
+      setExtractingJob(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -229,26 +258,119 @@ const ResumeUploadPage = () => {
           </CardContent>
         </Card>
 
-        {/* Job Description */}
+        {/* Job URL Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Linkedin className="h-5 w-5" />
-              Additional Information
+              <LinkIcon className="h-5 w-5" />
+              Job URL
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Job Description
+                Enter Job Posting URL
               </label>
-              <textarea
-                className="w-full h-32 p-2 border rounded-md"
-                placeholder="Paste the job description here..."
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://www.linkedin.com/jobs/view/..."
+                  value={jobUrl}
+                  onChange={(e) => setJobUrl(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={handleExtractJobFromUrl}
+                  disabled={extractingJob || !jobUrl}
+                  className="whitespace-nowrap"
+                >
+                  {extractingJob ? "Extracting..." : "Extract Job"}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Paste the URL of the job posting from LinkedIn, Indeed, or other
+                job sites
+              </p>
             </div>
+
+            {jobExtracted && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Extracted Job Description
+                </label>
+                <div className="border p-3 rounded-md bg-gray-50 max-h-40 overflow-y-auto text-sm text-gray-800">
+                  {jobDescription.substring(0, 300)}
+                  {jobDescription.length > 300 && "..."}
+                </div>
+                <p className="text-xs text-green-600 mt-1">
+                  Job description extracted successfully!
+                </p>
+              </div>
+            )}
+
+            {/* Error with fallback option */}
+            {error && showManualInput && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">Extraction Failed</div>
+                  <div className="text-sm text-red-800">{error}</div>
+                  <div className="mt-2">
+                    <Button
+                      type="button"
+                      onClick={() => setShowManualInput(true)}
+                      className="mr-2 bg-white text-black border border-gray-300 hover:bg-gray-100 text-xs py-1 px-2"
+                    >
+                      Enter Manually
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setJobUrl("");
+                        setError("");
+                      }}
+                      className="bg-white text-black border border-gray-300 hover:bg-gray-100 text-xs py-1 px-2"
+                    >
+                      Try Different URL
+                    </Button>
+                  </div>
+                </div>
+              </Alert>
+            )}
+
+            {/* Manual input option */}
+            {(showManualInput || jobExtracted) && (
+              <div className="mt-4">
+                <details open={showManualInput}>
+                  <summary className="text-sm font-medium cursor-pointer">
+                    {showManualInput
+                      ? "Enter job description manually"
+                      : "Edit job description"}
+                  </summary>
+                  <div className="mt-2">
+                    <textarea
+                      className="w-full h-32 p-2 border rounded-md mt-2 text-gray-800"
+                      placeholder={
+                        showManualInput
+                          ? "Paste the job description here..."
+                          : "Edit the job description if needed..."
+                      }
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                    />
+                    {showManualInput && (
+                      <div className="flex items-center mt-2 text-xs text-amber-600">
+                        <Info className="h-3 w-3 mr-1" />
+                        <span>
+                          Enter the job description manually to continue
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              </div>
+            )}
           </CardContent>
         </Card>
 
