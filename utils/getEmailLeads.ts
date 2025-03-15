@@ -54,4 +54,3 @@ export const getCompanyData = async (domain: string): Promise<ExtractedData> => 
     const emailLeads = await getEmailLeads(domain);
     return extractCompanyData(emailLeads);
 };
-
