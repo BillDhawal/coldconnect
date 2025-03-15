@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Upload,
   FileText,
@@ -21,6 +21,7 @@ import { extractTextFromPDF, askGPTForResumeMatch } from "../utils/resumeUtils";
 import { askGPTForColdEmail } from "../utils/coldEmailUtils";
 import { getCompanyData } from "../utils/getEmailLeads";
 import { extractJobFromUrl } from "../utils/jobUtils";
+import { debounce } from "lodash";
 
 interface ExtractedData {
   company: string;
@@ -234,11 +235,6 @@ const ResumeUploadPage = () => {
 
       setJobDescription(jobData.jobDescription);
       setJobExtracted(true);
-      setSuccess(
-        `Successfully extracted job description from ${
-          jobData.companyName || "the provided URL"
-        }`
-      );
       console.log(
         "Extracted job description:",
         jobData.jobDescription.substring(0, 100) + "..."
@@ -259,6 +255,14 @@ const ResumeUploadPage = () => {
       setExtractingJob(false);
     }
   };
+
+  const handleExtractJobFromUrlDebounced = debounce(handleExtractJobFromUrl, 500); // 500ms delay
+
+  useEffect(() => {
+    if (jobUrl) {
+      handleExtractJobFromUrlDebounced();
+    }
+  }, [jobUrl]); // Runs when jobUrl changes
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -329,42 +333,14 @@ const ResumeUploadPage = () => {
                   type="url"
                   placeholder="https://www.linkedin.com/jobs/view/..."
                   value={jobUrl}
-                  onChange={(e) => setJobUrl(e.target.value)}
+                  onChange={(e) => setJobUrl(e.target.value)} // Just update state on change
+                  onPaste={(e) => {
+                    const pastedUrl = e.clipboardData.getData("text");
+                    setJobUrl(pastedUrl); // Ensure state updates first
+                  }}
                   className="flex-1"
                   disabled={extractingJob}
                 />
-                <Button
-                  type="button"
-                  onClick={handleExtractJobFromUrl}
-                  disabled={extractingJob || !jobUrl}
-                  className="whitespace-nowrap"
-                >
-                  {extractingJob ? (
-                    <>
-                      <svg
-                        className="animate-spin h-4 w-4 mr-2 text-white"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Extracting...
-                    </>
-                  ) : (
-                    "Extract Job"
-                  )}
-                </Button>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Paste the URL of the job posting from LinkedIn, Indeed, or other
@@ -462,7 +438,7 @@ const ResumeUploadPage = () => {
         <Button
           type="submit"
           className="w-full bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 text-white font-bold py-2 px-4 rounded-full transition duration-500 ease-in-out transform hover:-translate-y-1 hover:scale-110"
-          disabled={!resumeText || isLoading}
+          disabled={!resumeText || isLoading || !jobExtracted} // Disable if jobExtracted is false
         >
           {isLoading ? (
             <span className="flex items-center justify-center">
@@ -691,23 +667,18 @@ const ResumeUploadPage = () => {
 
       {/* Reset Button */}
       {(parsedData || generatedEmail) && (
-        <Button
-          type="button"
-          onClick={handleReset}
-          className="mt-4 flex items-center gap-2 bg-gray-200 text-gray-800 hover:bg-gray-300"
-        >
-          <RefreshCcw className="h-4 w-4" />
-          Start Over
-        </Button>
+        <div className="flex justify-center mt-4">
+          <Button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-2 bg-gray-200 text-gray-800 hover:bg-gray-300"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Start Over
+          </Button>
+        </div>
       )}
 
-      {/* Success Message */}
-      {success && (
-        <Alert className="bg-green-50 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <span className="text-green-800">{success}</span>
-        </Alert>
-      )}
     </div>
   );
 };
