@@ -20,7 +20,7 @@ export default async function handler(
     // Validate URL format
     try {
       new URL(url.startsWith("http") ? url : `https://${url}`);
-    } catch (e) {
+    } catch {
       return res.status(400).json({
         error: "Invalid URL format. Please provide a valid job posting URL.",
       });
@@ -49,15 +49,14 @@ export default async function handler(
         jobDescription: jobDescription.trim(),
         companyName: companyName?.trim() || "Unknown Company",
       });
-    } catch (extractError: any) {
-      console.error("Error in job extraction:", extractError);
+    } catch (error) {
+      console.error("Error in job extraction:", error);
       return res.status(400).json({
         error:
-          extractError.message ||
           "Failed to extract job description. The page might be protected or require authentication.",
       });
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in request handler:", error);
     return res.status(500).json({
       error: "An unexpected error occurred while processing your request.",
@@ -125,8 +124,12 @@ async function fetchWithFallback(url: string): Promise<string> {
         } bytes)`
       );
       throw new Error("Invalid HTML response");
-    } catch (error: any) {
-      console.error(`${proxyName} proxy fetch failed:`, error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(`${proxyName} proxy fetch failed:`, error.message);
+      } else {
+        console.error(`${proxyName} proxy fetch failed:`, error);
+      }
       throw error;
     }
   };
@@ -159,8 +162,12 @@ async function fetchWithFallback(url: string): Promise<string> {
           } bytes)`
         );
         throw new Error("Invalid HTML response from direct fetch");
-      } catch (error: any) {
-        console.error(`Direct fetch failed: ${error.message}`);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(`Direct fetch failed:`, error.message);
+        } else {
+          console.error(`Direct fetch failed:`, error);
+        }
         throw error;
       }
     },
@@ -216,8 +223,12 @@ async function fetchWithFallback(url: string): Promise<string> {
           return response.data;
         }
         throw new Error("Invalid HTML response from POST fetch");
-      } catch (error: any) {
-        console.error(`POST fetch failed: ${error.message}`);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(`POST fetch failed:`, error.message);
+        } else {
+          console.error(`POST fetch failed:`, error);
+        }
         throw error;
       }
     },
@@ -227,7 +238,7 @@ async function fetchWithFallback(url: string): Promise<string> {
   for (const fetchMethod of fetchMethods) {
     try {
       return await fetchMethod();
-    } catch (error) {
+    } catch {
       // Continue to next method on failure
       continue;
     }

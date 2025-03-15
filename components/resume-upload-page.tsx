@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   Upload,
   FileText,
-  Linkedin,
   Briefcase,
   Link as LinkIcon,
   AlertCircle,
@@ -60,7 +59,6 @@ const ResumeUploadPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [resumeText, setResumeText] = useState("");
   const [parsedData, setParsedData] = useState<ExtractedData | null>(null);
   const [leads, setLeads] = useState<Leads | null>(null);
@@ -87,9 +85,12 @@ const ResumeUploadPage = () => {
         const text = await extractTextFromPDF(arrayBuffer);
         setResumeText(text);
         setError("");
-        setSuccess("Resume uploaded successfully!");
       } catch (error) {
-        console.error("Error processing file:", error);
+        if (error instanceof Error) {
+          console.error("Error processing file:", error.message);
+        } else {
+          console.error("Error processing file:", error);
+        }
         setError("Failed to process resume. Please try again.");
       } finally {
         setUploadingResume(false);
@@ -134,7 +135,7 @@ const ResumeUploadPage = () => {
           emails: [],
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error in handleExtract:", error);
       setError("Failed to analyze resume match. Please try again.");
       throw error; // Re-throw to be handled by the caller
@@ -201,7 +202,6 @@ const ResumeUploadPage = () => {
     setJobExtracted(false);
     setGeneratedEmail(null);
     setError("");
-    setSuccess("");
     setResumeText("");
     setParsedData(null);
     setLeads(null);
@@ -218,7 +218,6 @@ const ResumeUploadPage = () => {
     setExtractingJob(true);
     setError("");
     setShowManualInput(false);
-    setSuccess("");
 
     try {
       console.log(`Attempting to extract job from URL: ${jobUrl}`);
@@ -240,13 +239,16 @@ const ResumeUploadPage = () => {
         jobData.jobDescription.substring(0, 100) + "..."
       );
       console.log("Company name:", jobData.companyName);
-    } catch (error: any) {
-      console.error("Error extracting job description:", error);
-
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error extracting job description:", error.message);
+      } else {
+        console.error("Error extracting job description:", error);
+      }
       // Set a user-friendly error message
-      const errorMessage =
-        error.message ||
-        "Failed to extract job description. Please try a different URL or paste the description manually.";
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to extract job description. Please try a different URL or paste the description manually.";
 
       setError(errorMessage);
       setShowManualInput(true);
